@@ -1,0 +1,134 @@
+syntax = "proto3";
+
+package helloworld;
+
+//import ".. google/protobuf/wrappers.proto";
+
+/*message StringValue {
+  string value = 1;
+}
+
+StringValue Username;*/
+
+//string username = 1;
+
+//google.protobuf.StringValue Username;
+
+message Username {
+  string username = 1;
+}
+
+message Password {
+  string password = 1;
+}
+
+message Token {
+  string token = 1;
+}
+
+message UserInfo {
+  string id = 1;
+  string nickname = 2;
+}
+
+message UserInfoSetOperation {
+  enum operation {
+    set = 0;
+    clear = 1;
+  };
+
+  enum field {
+    nickname = 0;
+    description = 1;
+  };
+}
+
+message LoginArgs {
+  Username username = 1;
+  Password password = 2;
+}
+
+message SignupArgs {
+  Username username = 1;
+  Password password = 2;
+}
+
+message SetUserInfoArgs {
+  Token token = 1;
+  repeated UserInfoSetOperation userInfoSetOperations = 2;
+}
+
+message GetOthersInfoArgs {
+  Token token = 1;
+  string id = 2;
+}
+
+message Empty {
+
+}
+
+message Err {
+  uint32 code = 1;
+  string msg = 2;
+}
+
+message LoginResult {
+  enum dataOrErr {
+    isData = 0;
+    isErr = 1;
+  }
+
+  Token token = 2;
+  Err err = 3;
+}
+
+message SignupResult {
+  enum dataOrErr {
+    isData = 0;
+    isErr = 1;
+  }
+
+  Token token = 2;
+  Err err = 3;
+}
+
+message GetUserInfoResult {
+  enum dataOrErr {
+    isData = 0;
+    isErr = 1;
+  }
+
+  UserInfo userInfo = 2;
+  Err err = 3;
+}
+
+message SetUserInfoResult {
+  enum dataOrErr {
+    isData = 0;
+    isErr = 1;
+  }
+
+  Empty empty = 2;
+  Err err = 3;
+}
+
+message GetOthersInfoResult {
+  enum dataOrErr {
+    isData = 0;
+    isErr = 1;
+  }
+
+  UserInfo userInfo = 2;
+  Err err = 3;
+}
+
+service Greeter {
+  // Sends a greeting
+  rpc Login(LoginArgs) returns (LoginResult) {}    //Token
+  rpc Signup(SignupArgs) returns(SignupResult) {}    //Token
+  rpc GetUserInfo(Token) returns(GetUserInfoResult) {}    //UserInfo
+  rpc SetUserInfo(SetUserInfoArgs) returns(SetUserInfoResult) {}    //Empty
+  rpc GetOthersInfo(GetOthersInfoArgs) returns(GetOthersInfoResult) {}    //UserInfo
+
+}
+
