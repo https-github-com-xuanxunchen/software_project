@@ -2,15 +2,12 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 )
-
-var UserInfos map[string]string
 
 type Entry struct {
 	Token    string
@@ -25,7 +22,7 @@ type server2 struct {
 	sync.RWMutex
 }
 
-func (s *server2) Login(ctx context.Context, in *LoginArgs) (*LoginResult, error) {
+func (s *server2) Login(in *LoginArgs) (*LoginResult, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -97,7 +94,7 @@ func (s *server2) Login(ctx context.Context, in *LoginArgs) (*LoginResult, error
 
 }
 
-func (s *server2) GetUserInfo(ctx context.Context, in *Token) (*GetUserInfoResult, error) {
+func (s *server2) GetUserInfo(in *Token) (*GetUserInfoResult, error) {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -144,7 +141,7 @@ func (s *server2) GetUserInfo(ctx context.Context, in *Token) (*GetUserInfoResul
 	return &getUserInfoResult, nil
 }
 
-func (s *server2) SetUserInfo(ctx context.Context, in *SetUserInfoArgs) (*SetUserInfoResult, error) {
+func (s *server2) SetUserInfo(in *SetUserInfoArgs) (*SetUserInfoResult, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -267,7 +264,7 @@ func (s *server2) SetUserInfo(ctx context.Context, in *SetUserInfoArgs) (*SetUse
 	return &setUserInfoResult, nil
 }
 
-func (s *server2) GetOthersInfo(ctx context.Context, in *GetOthersInfoArgs) (*GetOthersInfoResult, error) {
+func (s *server2) GetOthersInfo(in *GetOthersInfoArgs) (*GetOthersInfoResult, error) {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -311,7 +308,7 @@ func (s *server2) GetOthersInfo(ctx context.Context, in *GetOthersInfoArgs) (*Ge
 	return &getOthersInfoResult, nil
 }
 
-func (s *server2) Logout(ctx context.Context, in *LogoutArgs) (*LogoutResult, error) {
+func (s *server2) Logout(in *LogoutArgs) (*LogoutResult, error) {
 	s.Lock()
 	defer s.Unlock()
 

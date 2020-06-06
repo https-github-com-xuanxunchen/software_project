@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"testing"
 )
@@ -14,8 +13,7 @@ func TestServer(t *testing.T) {
 		Username: "username1",
 		Password: "password1",
 	}
-	var ctx context.Context
-	loginResult, err := server.Login(ctx, &loginArgs)
+	loginResult, err := server.Login(&loginArgs)
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +26,7 @@ func TestServer(t *testing.T) {
 	token := Token{ //测试GetUserInfo
 		Token: "2",
 	}
-	getUserInfoResult, err := server.GetUserInfo(ctx, &token)
+	getUserInfoResult, err := server.GetUserInfo(&token)
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +41,7 @@ func TestServer(t *testing.T) {
 	getOthersInfoArgs := GetOthersInfoArgs{ //测试GetOthersInfo
 		Id: "2",
 	}
-	getOthersInfoResult, err := server.GetOthersInfo(ctx, &getOthersInfoArgs)
+	getOthersInfoResult, err := server.GetOthersInfo(&getOthersInfoArgs)
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +59,7 @@ func TestServer(t *testing.T) {
 		Password: "Password2",
 		Head:     "avatar/head1.png",
 	}
-	setUserInfoResult, err := server.SetUserInfo(ctx, &setUserInfoArgs)
+	setUserInfoResult, err := server.SetUserInfo(&setUserInfoArgs)
 	if err != nil {
 		panic(err)
 	}
@@ -73,7 +71,7 @@ func TestServer(t *testing.T) {
 	logoutArgs := LogoutArgs{ //测试Logout
 		Token: "2",
 	}
-	logoutResult, err := server.Logout(ctx, &logoutArgs)
+	logoutResult, err := server.Logout(&logoutArgs)
 	if err != nil {
 		panic(err)
 	}
