@@ -2,11 +2,11 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"math/rand"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Entry struct {
@@ -15,337 +15,147 @@ type Entry struct {
 	Username string
 	Password string
 	Url      string
-	Mark     string
+	Mark     string // 0 for logout, 1 for login
 }
 
-type server2 struct {
+type Service struct {
 	sync.RWMutex
+
+	filename string  // For read
+	tail     os.File // For write
 }
 
-func (s *server2) Login(in *LoginArgs) (*LoginResult, error) {
+func (s *Service) Login(in *LoginArgs) (*LoginResult, error) {
+	if err := checkInvalid(in); err != nil {
+		return &LoginResult{
+			Token: "",
+			Err:   err,
+		}, nil
+	}
+
 	s.Lock()
 	defer s.Unlock()
 
-	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm) //打开文件
-	if err != nil {
-		panic(err)
-	}
-
-	scanner := bufio.NewScanner(file1) //逐行扫描文件
-	var cnt = 0
-	cntChar := 0
-	for scanner.Scan() {
-		strs := strings.Split(scanner.Text(), " ") //每行的内容提取出来
-		//fmt.Println(scanner.Text())
-		entry := Entry{
-			Token:    strs[0],
-			Id:       strs[1],
-			Username: strs[2],
-			Password: strs[3],
-			Url:      strs[4],
-			Mark:     strs[5],
-		}
-		cnt++
-		cntChar += len(scanner.Text()) //记录总共经过了多少个字符
-		fmt.Println("cntChar = ", cntChar)
-		if entry.Username == in.GetUsername() { //用户名和表里的相等
-			if entry.Password == in.GetPassword() { //密码和表里的相等，登录成功
-				file1.Seek(int64(cntChar-1), 0) //文件指针偏移到这里
-				file1.WriteString("1")          //改写登录状态，1表示登录，0表示未登录
-				err1 := Err{
-					Code: 0,
-					Msg:  "no error: login in",
-				}
-				loginResult := LoginResult{
-					Token: entry.Token,
-					Err:   &err1,
-				}
-				file1.Close()
-				return &loginResult, nil
-			}
-			err1 := Err{ //用户名匹配而密码不相等，说明密码错误，登录失败
-				Code: 1,
-				Msg:  "error: wrong password",
-			}
-			loginResult := LoginResult{
+	var entry *Entry
+	if entry = s.noLockGetUserInfo(in.Username); entry != nil {
+		if entry.Password == in.Password {
+			entry.Mark = "1"
+		} else {
+			return &LoginResult{
 				Token: "",
-				Err:   &err1,
-			}
-			file1.Close()
-			return &loginResult, nil
-
+				Err: &Err{
+					Code: 2,
+					Msg:  "Incorrect password",
+				},
+			}, nil
 		}
-		cntChar += 1
+	} else {
+		id := randStringRunes(32)
+		entry = &Entry{
+			Token:    id,
+			Id:       id,
+			Username: in.Username,
+			Password: in.Password,
+			Url:      "",
+			Mark:     "1",
+		}
 	}
 
-	//是新的用户，需要在文件追加一行，表明注册
-	file1.WriteString("\n" + strconv.Itoa(cnt) + " " + strconv.Itoa(cnt) + " " + in.GetUsername() + " " + in.GetPassword() + " avatar/head1.png " + "1\n")
-
-	err1 := Err{
-		Code: 0,
-		Msg:  "no error: sign up",
+	if _, err := s.tail.WriteString(encode(entry)); err != nil {
+		return nil, err
 	}
-	loginResult := LoginResult{
-		Token: strconv.Itoa(cnt),
-		Err:   &err1,
-	}
-	file1.Close()
-	return &loginResult, nil
 
+	return &LoginResult{
+		Token: entry.Token,
+		Err:   nil,
+	}, nil
 }
 
-func (s *server2) GetUserInfo(in *Token) (*GetUserInfoResult, error) {
+func (s *Service) GetUserInfo(in *Token) (*GetUserInfoResult, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm)
-	if err != nil {
-		panic(err)
-	}
-
-	scanner := bufio.NewScanner(file1)
-	for scanner.Scan() {
-		strs := strings.Split(scanner.Text(), " ")
-		if in.Token == strs[0] { //拿到个人信息
-			userInfo := UserInfo{
-				Id:       strs[1],
-				Username: strs[2],
-				Password: strs[3],
-				Head:     strs[4],
-			}
-
-			err1 := Err{
-				Code: 0,
-				Msg:  "no error",
-			}
-
-			getUserInfoResult := GetUserInfoResult{
-				UserInfo: &userInfo,
-				Err:      &err1,
-			}
-			file1.Close()
-			return &getUserInfoResult, nil
-		}
-	}
-
-	err1 := Err{ //在表中没有找到token
-		Code: 1,
-		Msg:  "error: no such user",
-	}
-
-	getUserInfoResult := GetUserInfoResult{
-		UserInfo: nil,
-		Err:      &err1,
-	}
-	file1.Close()
-	return &getUserInfoResult, nil
+	return nil, nil
 }
 
-func (s *server2) SetUserInfo(in *SetUserInfoArgs) (*SetUserInfoResult, error) {
+func (s *Service) SetUserInfo(in *SetUserInfoArgs) (*SetUserInfoResult, error) {
 	s.Lock()
 	defer s.Unlock()
 
-	//改用户信息（用户名和密码），文件里需要改动
-	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm)
-	if err != nil {
-		panic(err)
-	}
-
-	scanner := bufio.NewScanner(file1)
-	var cnt = 0
-	cntChar := 0
-	for scanner.Scan() {
-		fmt.Println(scanner.Text())
-		strs := strings.Split(scanner.Text(), " ")
-
-		entry := Entry{
-			Token:    strs[0],
-			Id:       strs[1],
-			Username: strs[2],
-			Password: strs[3],
-			Url:      strs[4],
-			Mark:     strs[5],
-		}
-
-		cnt++
-		cntChar += len(scanner.Text())
-
-		if in.GetUsername() == entry.Username { //找到存在的用户名
-			if in.GetToken() == entry.Token { //就是自己，不是别人
-				file1.Seek(int64(cntChar-len(scanner.Text())), 0)
-				entry.Password = in.GetPassword()
-				entry.Url = in.GetHead()
-
-				file1.Seek(int64(cntChar-len(scanner.Text())), 0)                                                                                         //文件指针偏移到要修改的地方
-				file1.WriteString(entry.Token + " " + entry.Id + " " + entry.Username + " " + entry.Password + " " + entry.Url + " " + entry.Mark + "\n") //这里有bug，假设现在要写入的行比原来短，就没法完全覆盖，换行的时候，这一行没有被覆盖掉的内容会覆盖掉下一行
-
-				err1 := Err{
-					Code: 0,
-					Msg:  "no error",
-				}
-
-				serUserInfoResult := SetUserInfoResult{
-					Err: &err1,
-				}
-				return &serUserInfoResult, nil
-
-			}
-
-			//已经存在该用户名，而且不是自己的，不能改
-			err1 := Err{
-				Code: 1,
-				Msg:  "same username exist",
-			}
-
-			serUserInfoResult := SetUserInfoResult{
-				Err: &err1,
-			}
-			return &serUserInfoResult, nil
-		}
-
-		cntChar++
-
-	}
-
-	//没有存在该用户名，可以改，再遍历一次
-	cntChar = 0 //字符计数清0
-	file1.Seek(0, 0)
-	scanner2 := bufio.NewScanner(file1)
-	for scanner2.Scan() {
-		fmt.Println(scanner2.Text())
-		strs := strings.Split(scanner2.Text(), " ")
-
-		entry := Entry{
-			Token:    strs[0],
-			Id:       strs[1],
-			Username: strs[2],
-			Password: strs[3],
-			Url:      strs[4],
-			Mark:     strs[5],
-		}
-
-		cntChar += len(scanner2.Text())
-		if entry.Token == in.Token { //存在这个token
-			entry.Username = in.GetUsername()
-			entry.Password = in.GetPassword()
-			entry.Url = in.GetHead()
-
-			file1.Seek(int64(cntChar-len(scanner2.Text())), 0)                                                                                        //文件指针偏移到要修改的地方
-			file1.WriteString(entry.Token + " " + entry.Id + " " + entry.Username + " " + entry.Password + " " + entry.Url + " " + entry.Mark + "\n") //这里有bug，假设现在要写入的行比原来短，就没法完全覆盖，换行的时候，这一行没有被覆盖掉的内容会覆盖掉下一行
-
-			err1 := Err{
-				Code: 0,
-				Msg:  "no error",
-			}
-
-			setUserInfoResult := SetUserInfoResult{
-				Err: &err1,
-			}
-
-			file1.Close()
-			return &setUserInfoResult, nil
-		}
-
-		cntChar++
-
-	}
-
-	//找不到token对应的用户
-	err1 := Err{
-		Code: 1,
-		Msg:  "error: no such user",
-	}
-
-	setUserInfoResult := SetUserInfoResult{
-		Err: &err1,
-	}
-
-	file1.Close()
-	return &setUserInfoResult, nil
+	return nil, nil
 }
 
-func (s *server2) GetOthersInfo(in *GetOthersInfoArgs) (*GetOthersInfoResult, error) {
+func (s *Service) GetOthersInfo(in *GetOthersInfoArgs) (*GetOthersInfoResult, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm)
-	if err != nil {
-		panic(err)
-	}
-
-	scanner := bufio.NewScanner(file1)
-	for scanner.Scan() {
-		strs := strings.Split(scanner.Text(), " ")
-		if in.Id == strs[1] { //拿到别人信息
-			userInfo := UserInfo{
-				Id:       in.Id,
-				Username: strs[2],
-				Password: "", //别人的密码拿不到
-				Head:     strs[4],
-			}
-			err1 := Err{
-				Code: 0,
-				Msg:  "no error",
-			}
-			getOthersInfoResult := GetOthersInfoResult{
-				UserInfo: &userInfo,
-				Err:      &err1,
-			}
-			return &getOthersInfoResult, nil
-		}
-	}
-
-	err1 := Err{
-		Code: 1,
-		Msg:  "error: no such user",
-	}
-
-	getOthersInfoResult := GetOthersInfoResult{
-		UserInfo: nil,
-		Err:      &err1,
-	}
-
-	return &getOthersInfoResult, nil
+	return nil, nil
 }
 
-func (s *server2) Logout(in *LogoutArgs) (*LogoutResult, error) {
+func (s *Service) Logout(in *LogoutArgs) (*LogoutResult, error) {
 	s.Lock()
 	defer s.Unlock()
 
-	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm)
+	return nil, nil
+}
+
+func (s *Service) noLockGetUserInfo(username string) *Entry {
+	file, err := os.Open(s.filename)
 	if err != nil {
-		panic(err)
+		return nil
 	}
-
-	scanner := bufio.NewScanner(file1)
-	cntChar := 0
-	for scanner.Scan() {
-		strs := strings.Split(scanner.Text(), " ")
-		cntChar += len(scanner.Text())
-		if in.Token == strs[1] {
-			//需要在文件里把这一行的mark改了
-			file1.Seek(int64(cntChar-1), 0)
-			file1.WriteString("0") //改成未登录状态
-
-			err1 := Err{
-				Code: 0,
-				Msg:  "no error",
-			}
-			LogoutResult := LogoutResult{
-				Err: &err1,
-			}
-			return &LogoutResult, nil
+	reader := bufio.NewReader(file)
+	for line, err := reader.ReadString('\n'); err != nil; line, err = reader.ReadString('\n') {
+		entry := decode(line)
+		if entry.Username == username {
+			return entry
 		}
-		cntChar++
 	}
 
-	err1 := Err{
-		Code: 1,
-		Msg:  "error: no such user",
-	}
-	LogoutResult := LogoutResult{
-		Err: &err1,
-	}
-	return &LogoutResult, nil
+	return nil
+}
 
+func decode(line string) *Entry {
+	strs := strings.Split(line, " ")
+	return &Entry{
+		Token:    strs[0],
+		Id:       strs[1],
+		Username: strs[2],
+		Password: strs[3],
+		Url:      strs[4],
+		Mark:     strs[5],
+	}
+}
+
+func checkInvalid(args *LoginArgs) *Err {
+	if len(args.Username) == 0 {
+		return &Err{
+			Code: 0,
+			Msg:  "Empty username",
+		}
+	} else if len(args.Password) == 0 {
+		return &Err{
+			Code: 1,
+			Msg:  "Empty password",
+		}
+	}
+	return nil
+}
+
+func encode(entry *Entry) string {
+	return entry.Token + " " + entry.Id + " " + entry.Username + " " + entry.Password + " " + entry.Url + " " + entry.Mark + "\n"
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
