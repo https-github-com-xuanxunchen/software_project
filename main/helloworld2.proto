@@ -22,9 +22,10 @@ message UserInfo {    //用户信息
   string id = 1;    
   string username = 2;
   string password = 3;
+  string head = 4;
 }
 
-message UserInfoSetOperation {    //表示设置用户信息的一次动作，每次动作只能设置/清空用户的某条信息
+/*message UserInfoSetOperation {    //表示设置用户信息的一次动作，每次动作只能设置/清空用户的某条信息
   enum operation {    //设置用户信息的操作有设置（更改），清空
     set = 0;
     clear = 1;
@@ -34,7 +35,7 @@ message UserInfoSetOperation {    //表示设置用户信息的一次动作，�
     nickname = 0;
     description = 1;
   };
-}
+}*/
 
 message LoginArgs {
   string username = 1;
@@ -47,7 +48,10 @@ message GetUserInfoArgs {
 
 message SetUserInfoArgs {
   string token = 1;
-  repeated UserInfoSetOperation userInfoSetOperations = 2;
+  //repeated UserInfoSetOperation userInfoSetOperations = 2;
+  string username = 3;
+  string password = 4;
+  string head = 5;
 }
 
 message GetOthersInfoArgs {
@@ -84,7 +88,7 @@ message GetUserInfoResult {
 message SetUserInfoResult {
 
 
-  Empty empty = 2;    //想不出来这个数据段可以填什么，直接在server.go的UserInfos里面改应该就可以了
+  //Empty empty = 2;    //想不出来这个数据段可以填什么，直接在server.go的UserInfos里面改应该就可以了
   Err err = 3;
 }
 
