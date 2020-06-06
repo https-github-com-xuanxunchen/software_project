@@ -38,7 +38,17 @@ func (s *Service) Login(in *LoginArgs) (*LoginResult, error) {
 
 	var entry *Entry
 	if entry = s.noLockGetUserInfo(in.Username); entry != nil {
-		entry.Mark = "1"
+		if entry.Password == in.Password {
+			entry.Mark = "1"
+		} else {
+			return &LoginResult{
+				Token: "",
+				Err: &Err{
+					Code: 2,
+					Msg:  "Incorrect password",
+				},
+			}, nil
+		}
 	} else {
 		id := randStringRunes(32)
 		entry = &Entry{
