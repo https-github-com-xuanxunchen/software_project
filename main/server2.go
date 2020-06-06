@@ -59,7 +59,7 @@ func (s *Service) Login(in *LoginArgs) (*LoginResult, error) {
 		}
 	}
 
-	if _, err := s.tail.WriteString(encode(entry)); err != nil {
+	if err := s.noLockWriteEntry(entry); err != nil {
 		return nil, err
 	}
 
@@ -95,7 +95,30 @@ func (s *Service) SetUserInfo(in *SetUserInfoArgs) (*SetUserInfoResult, error) {
 	s.Lock()
 	defer s.Unlock()
 
-	return nil, nil
+	if entry := s.noLockGetUserInfoByToken(in.Token); entry != nil {
+		if len(in.Username) != 0 {
+			entry.Username = in.Username
+		}
+		if len(in.Password) != 0 {
+			entry.Password = in.Password
+		}
+		if len(in.Head) != 0 {
+			entry.Url = in.Head
+		}
+
+		if err := s.noLockWriteEntry(entry); err != nil {
+			return nil, err
+		}
+
+		return &SetUserInfoResult{}, nil
+	}
+
+	return &SetUserInfoResult{
+		Err: &Err{
+			Code: 4,
+			Msg:  "Incorrect token",
+		},
+	}, nil
 }
 
 func (s *Service) GetOthersInfo(in *GetOthersInfoArgs) (*GetOthersInfoResult, error) {
@@ -112,7 +135,7 @@ func (s *Service) Logout(in *LogoutArgs) (*LogoutResult, error) {
 	if entry := s.noLockGetUserInfoByToken(in.Token); entry != nil {
 		entry.Mark = "0"
 
-		if _, err := s.tail.WriteString(encode(entry)); err != nil {
+		if err := s.noLockWriteEntry(entry); err != nil {
 			return nil, err
 		}
 
@@ -155,6 +178,13 @@ func (s *Service) noLockGetUserInfo(pred func(*Entry) bool) *Entry {
 	}
 
 	return entry
+}
+
+func (s *Service) noLockWriteEntry(entry *Entry) error {
+	if _, err := s.tail.WriteString(encode(entry)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func decode(line string) *Entry {
