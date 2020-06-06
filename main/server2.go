@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var UserInfos map[string]string
@@ -21,10 +22,13 @@ type Entry struct {
 }
 
 type server2 struct {
-	//helloworld.UnimplementedGreeterServer
+	sync.RWMutex
 }
 
 func (s *server2) Login(ctx context.Context, in *LoginArgs) (*LoginResult, error) {
+	s.Lock()
+	defer s.Unlock()
+
 	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm) //打开文件
 	if err != nil {
 		panic(err)
@@ -94,6 +98,9 @@ func (s *server2) Login(ctx context.Context, in *LoginArgs) (*LoginResult, error
 }
 
 func (s *server2) GetUserInfo(ctx context.Context, in *Token) (*GetUserInfoResult, error) {
+	s.RLock()
+	defer s.RUnlock()
+
 	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm)
 	if err != nil {
 		panic(err)
@@ -138,6 +145,8 @@ func (s *server2) GetUserInfo(ctx context.Context, in *Token) (*GetUserInfoResul
 }
 
 func (s *server2) SetUserInfo(ctx context.Context, in *SetUserInfoArgs) (*SetUserInfoResult, error) {
+	s.Lock()
+	defer s.Unlock()
 
 	//改用户信息（用户名和密码），文件里需要改动
 	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm)
@@ -259,6 +268,8 @@ func (s *server2) SetUserInfo(ctx context.Context, in *SetUserInfoArgs) (*SetUse
 }
 
 func (s *server2) GetOthersInfo(ctx context.Context, in *GetOthersInfoArgs) (*GetOthersInfoResult, error) {
+	s.RLock()
+	defer s.RUnlock()
 
 	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm)
 	if err != nil {
@@ -301,6 +312,9 @@ func (s *server2) GetOthersInfo(ctx context.Context, in *GetOthersInfoArgs) (*Ge
 }
 
 func (s *server2) Logout(ctx context.Context, in *LogoutArgs) (*LogoutResult, error) {
+	s.Lock()
+	defer s.Unlock()
+
 	file1, err := os.OpenFile("table1.txt", os.O_RDWR, os.ModePerm)
 	if err != nil {
 		panic(err)
