@@ -6,7 +6,7 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	var server server2
+	var server Service
 
 	fmt.Println("--------Test Login start--------")
 	loginArgs := LoginArgs{ //测试Login
