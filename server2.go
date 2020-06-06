@@ -21,8 +21,8 @@ type Entry struct {
 type Service struct {
 	sync.RWMutex
 
-	filename string  // For read
-	tail     os.File // For write
+	filename string   // For read
+	tail     *os.File // For write
 }
 
 func (s *Service) Login(in *LoginArgs) (*LoginResult, error) {
@@ -170,11 +170,18 @@ func (s *Service) noLockGetUserInfo(pred func(*Entry) bool) *Entry {
 	reader := bufio.NewReader(file)
 	var entry *Entry
 
-	for line, err := reader.ReadString('\n'); err != nil; line, err = reader.ReadString('\n') {
-		nEntry := decode(line)
+	line, err := reader.ReadString('\n')
+	for err == nil {
+		if len(line) == 0 {
+			break
+		}
+
+		nEntry := decode(line[:len(line)-1])
 		if pred(nEntry) {
 			entry = nEntry
 		}
+
+		line, err = reader.ReadString('\n')
 	}
 
 	return entry
@@ -231,3 +238,11 @@ func randStringRunes(n int) string {
 	}
 	return string(b)
 }
+
+//func main() {
+//	file, err := ioutil.TempFile("service", "")
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer os.Remove(file.Name())
+//}
