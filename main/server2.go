@@ -390,8 +390,8 @@ func main() {
 	fmt.Println("--------Test SetUserInfo start--------")
 	setUserInfoArgs := SetUserInfoArgs{
 		Token:    "2",
-		Username: "ser2",
-		Password: "assword2",
+		Username: "User2",
+		Password: "Password2",
 		Head:     "avatar/head1.png",
 	}
 	setUserInfoResult, err := server.SetUserInfo(ctx, &setUserInfoArgs)
