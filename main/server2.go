@@ -105,7 +105,7 @@ func (s *Service) noLockGetUserInfo(username string) *Entry {
 		return nil
 	}
 	reader := bufio.NewReader(file)
-	for line, err := reader.ReadString('\n'); err != nil; {
+	for line, err := reader.ReadString('\n'); err != nil; line, err = reader.ReadString('\n') {
 		entry := decode(line)
 		if entry.Username == username {
 			return entry
