@@ -109,7 +109,22 @@ func (s *Service) Logout(in *LogoutArgs) (*LogoutResult, error) {
 	s.Lock()
 	defer s.Unlock()
 
-	return nil, nil
+	if entry := s.noLockGetUserInfoByToken(in.Token); entry != nil {
+		entry.Mark = "0"
+
+		if _, err := s.tail.WriteString(encode(entry)); err != nil {
+			return nil, err
+		}
+
+		return &LogoutResult{}, nil
+	}
+
+	return &LogoutResult{
+		Err: &Err{
+			Code: 4,
+			Msg:  "Incorrect token",
+		},
+	}, nil
 }
 
 func (s *Service) noLockGetUserInfoByUsername(username string) *Entry {
