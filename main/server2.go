@@ -28,8 +28,7 @@ type Service struct {
 func (s *Service) Login(in *LoginArgs) (*LoginResult, error) {
 	if err := checkInvalid(in); err != nil {
 		return &LoginResult{
-			Token: "",
-			Err:   err,
+			Err: err,
 		}, nil
 	}
 
@@ -37,12 +36,11 @@ func (s *Service) Login(in *LoginArgs) (*LoginResult, error) {
 	defer s.Unlock()
 
 	var entry *Entry
-	if entry = s.noLockGetUserInfo(in.Username); entry != nil {
+	if entry = s.noLockGetUserInfoByUsername(in.Username); entry != nil {
 		if entry.Password == in.Password {
 			entry.Mark = "1"
 		} else {
 			return &LoginResult{
-				Token: "",
 				Err: &Err{
 					Code: 2,
 					Msg:  "Incorrect password",
@@ -67,7 +65,6 @@ func (s *Service) Login(in *LoginArgs) (*LoginResult, error) {
 
 	return &LoginResult{
 		Token: entry.Token,
-		Err:   nil,
 	}, nil
 }
 
@@ -75,7 +72,23 @@ func (s *Service) GetUserInfo(in *Token) (*GetUserInfoResult, error) {
 	s.RLock()
 	defer s.RUnlock()
 
-	return nil, nil
+	if entry := s.noLockGetUserInfoByToken(in.Token); entry != nil {
+		return &GetUserInfoResult{
+			UserInfo: &UserInfo{
+				Id:       entry.Id,
+				Username: entry.Username,
+				Password: "",
+				Head:     entry.Url,
+			},
+		}, nil
+	}
+
+	return &GetUserInfoResult{
+		Err: &Err{
+			Code: 3,
+			Msg:  "User not found",
+		},
+	}, nil
 }
 
 func (s *Service) SetUserInfo(in *SetUserInfoArgs) (*SetUserInfoResult, error) {
@@ -99,7 +112,7 @@ func (s *Service) Logout(in *LogoutArgs) (*LogoutResult, error) {
 	return nil, nil
 }
 
-func (s *Service) noLockGetUserInfo(username string) *Entry {
+func (s *Service) noLockGetUserInfoByUsername(username string) *Entry {
 	file, err := os.Open(s.filename)
 	if err != nil {
 		return nil
@@ -108,6 +121,22 @@ func (s *Service) noLockGetUserInfo(username string) *Entry {
 	for line, err := reader.ReadString('\n'); err != nil; line, err = reader.ReadString('\n') {
 		entry := decode(line)
 		if entry.Username == username {
+			return entry
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) noLockGetUserInfoByToken(token string) *Entry {
+	file, err := os.Open(s.filename)
+	if err != nil {
+		return nil
+	}
+	reader := bufio.NewReader(file)
+	for line, err := reader.ReadString('\n'); err != nil; line, err = reader.ReadString('\n') {
+		entry := decode(line)
+		if entry.Token == token {
 			return entry
 		}
 	}
