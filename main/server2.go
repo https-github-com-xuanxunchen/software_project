@@ -128,35 +128,33 @@ func (s *Service) Logout(in *LogoutArgs) (*LogoutResult, error) {
 }
 
 func (s *Service) noLockGetUserInfoByUsername(username string) *Entry {
-	file, err := os.Open(s.filename)
-	if err != nil {
-		return nil
-	}
-	reader := bufio.NewReader(file)
-	for line, err := reader.ReadString('\n'); err != nil; line, err = reader.ReadString('\n') {
-		entry := decode(line)
-		if entry.Username == username {
-			return entry
-		}
-	}
-
-	return nil
+	return s.noLockGetUserInfo(func(entry *Entry) bool {
+		return entry.Username == username
+	})
 }
 
 func (s *Service) noLockGetUserInfoByToken(token string) *Entry {
+	return s.noLockGetUserInfo(func(entry *Entry) bool {
+		return entry.Token == token
+	})
+}
+
+func (s *Service) noLockGetUserInfo(pred func(*Entry) bool) *Entry {
 	file, err := os.Open(s.filename)
 	if err != nil {
 		return nil
 	}
 	reader := bufio.NewReader(file)
+	var entry *Entry
+
 	for line, err := reader.ReadString('\n'); err != nil; line, err = reader.ReadString('\n') {
-		entry := decode(line)
-		if entry.Token == token {
-			return entry
+		nEntry := decode(line)
+		if pred(nEntry) {
+			entry = nEntry
 		}
 	}
 
-	return nil
+	return entry
 }
 
 func decode(line string) *Entry {
