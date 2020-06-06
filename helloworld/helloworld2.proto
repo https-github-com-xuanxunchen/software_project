@@ -14,20 +14,12 @@ StringValue Username;*/
 
 //google.protobuf.StringValue Username;
 
-message Username {
-  string username = 1;
-}
-
-message Password {
-  string password = 1;
-}
-
 message Token {
   string token = 1;
 }
 
 message UserInfo {    //用户信息
-  //string id = 1;    
+  string id = 1;    
   string username = 2;
   string password = 3;
 }
@@ -45,24 +37,27 @@ message UserInfoSetOperation {    //表示设置用户信息的一次动作，�
 }
 
 message LoginArgs {
-  Username username = 1;
-  Password password = 2;
+  string username = 1;
+  string password = 2;
 }
 
-message SignupArgs {
-  Username username = 1;
-  Password password = 2;
+message GetUserInfoArgs {
+  string token = 1;
 }
 
 message SetUserInfoArgs {
-  Token token = 1;
+  string token = 1;
   repeated UserInfoSetOperation userInfoSetOperations = 2;
 }
 
 message GetOthersInfoArgs {
-  Token token = 1;
-  string id = 2;
+  string id = 1;
 }
+
+message LogoutArgs {
+    string token = 1;
+}
+
 
 message Empty {
 
@@ -76,19 +71,11 @@ message Err {
 message LoginResult {
 
 
-  Token token = 2;
-  Err err = 3;
-}
-
-message SignupResult {
-
-
-  Token token = 2;
+  string token = 2;
   Err err = 3;
 }
 
 message GetUserInfoResult {
-
 
   UserInfo userInfo = 2;
   Err err = 3;
@@ -102,22 +89,25 @@ message SetUserInfoResult {
 }
 
 message GetOthersInfoResult {
-  enum dataOrErr {
+  /*enum dataOrErr {
     isData = 0;
     isErr = 1;
-  }
+  }*/
 
   UserInfo userInfo = 2;
   Err err = 3;
 }
 
+message LogoutResult {
+    Err err = 2;
+}
+
 service Greeter {
   // Sends a greeting
   rpc Login(LoginArgs) returns (LoginResult) {}    //Token
-  rpc Signup(SignupArgs) returns(SignupResult) {}    //Token
   rpc GetUserInfo(Token) returns(GetUserInfoResult) {}    //UserInfo
   rpc SetUserInfo(SetUserInfoArgs) returns(SetUserInfoResult) {}    //Empty
   rpc GetOthersInfo(GetOthersInfoArgs) returns(GetOthersInfoResult) {}    //UserInfo
+  rpc Logout(LogoutArgs) returns(LogoutResult) {}
 
 }
-
