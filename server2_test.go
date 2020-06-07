@@ -21,8 +21,23 @@ func TestServer(t *testing.T) {
 	loginArgs := LoginArgs{ //Login参数
 		Username: "username1",
 		Password: "password1",
+		State:    0,
 	}
 	loginResult, err := service.Login(&loginArgs) //测试Login
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loginResult.GetErr() != nil {
+		t.Fatal("login failed")
+	}
+
+	loginArgs = LoginArgs{
+		Username:   "username1",
+		Password:   "password1",
+		State:      1,
+		VerifyCode: "verify code",
+	}
+	loginResult, err = service.Login(&loginArgs)
 	if err != nil {
 		t.Fatal(err)
 	}

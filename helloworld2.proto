@@ -40,6 +40,8 @@ message UserInfo {    //用户信息
 message LoginArgs {
   string username = 1;
   string password = 2;
+  string verifyCode = 3;
+  int32 state = 4;
 }
 
 message GetUserInfoArgs {
@@ -76,7 +78,9 @@ message LoginResult {
 
 
   string token = 2;
-  Err err = 3;
+  string verifyCode = 3;
+  int32 state = 4;
+  Err err = 5;
 }
 
 message GetUserInfoResult {

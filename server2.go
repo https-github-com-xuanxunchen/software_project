@@ -26,45 +26,75 @@ type Service struct {
 }
 
 func (s *Service) Login(in *LoginArgs) (*LoginResult, error) {
-	if err := checkInvalid(in); err != nil { //先检查登录参数是否合法（有无用户名和密码）
-		return &LoginResult{ //登录参数不合法
-			Err: err,
-		}, nil
-	}
 
 	s.Lock()
 	defer s.Unlock()
 
-	var entry *Entry
-	if entry = s.noLockGetUserInfoByUsername(in.Username); entry != nil { //以username为查找关键字，在表中查询，entry != nil说明找到username相同的记录，注意这里是把表扫一遍，所以取出来的是最后一条username相同的记录
-		if entry.Password == in.Password { //找到的记录的password匹配得上
-			entry.Mark = "1" //该用户登陆成功，Mark置为1
-		} else { //找到的记录的password匹配不上
-			return &LoginResult{
-				Err: &Err{
-					Code: 2,
-					Msg:  "Incorrect password",
-				},
+	if in.GetState() == 0 { //
+		if err := checkInvalid(in); err != nil { //先检查登录参数是否合法（有无用户名和密码）
+			return &LoginResult{ //登录参数不合法
+				Err: err,
 			}, nil
 		}
-	} else { //以username为查找关键字，在表中查询不到记录，说明是新用户，注册
-		id := randStringRunes(32) //id随机生成
-		entry = &Entry{
-			Token:    id, //Token通过id生成，这里设成和id一样
-			Id:       id,
-			Username: in.Username,
-			Password: in.Password,
-			Url:      "", //头像暂时为空
-			Mark:     "1",
+
+		var entry *Entry
+		if entry = s.noLockGetUserInfoByUsername(in.Username); entry != nil { //以username为查找关键字，在表中查询，entry != nil说明找到username相同的记录，注意这里是把表扫一遍，所以取出来的是最后一条username相同的记录
+			if entry.Password == in.Password { //找到的记录的password匹配得上
+				entry.Mark = "1" //该用户登陆成功，Mark置为1
+			} else { //找到的记录的password匹配不上
+				return &LoginResult{
+					State: 0,
+					Err: &Err{
+						Code: 2,
+						Msg:  "Incorrect password",
+					},
+				}, nil
+			}
+		} else { //以username为查找关键字，在表中查询不到记录，说明是新用户，注册
+			return &LoginResult{
+				State:      1,
+				VerifyCode: "verify code",
+			}, nil
 		}
-	}
 
-	if err := s.noLockWriteEntry(entry); err != nil { //在表中追加一项
-		return nil, err
 	}
+	if in.GetState() == 1 {
+		if in.GetVerifyCode() == "verify code" { //验证码正确
+			id := randStringRunes(32) //id随机生成
 
+			entry := &Entry{
+				Token:    id, //Token通过id生成，这里设成和id一样
+				Id:       id,
+				Username: in.Username,
+				Password: in.Password,
+				Url:      "", //头像暂时为空
+				Mark:     "1",
+			}
+
+			if err := s.noLockWriteEntry(entry); err != nil { //在表中追加一项
+				return nil, err
+			}
+
+			return &LoginResult{
+				Token: entry.Token,
+				State: 2,
+			}, nil
+		}
+		return &LoginResult{
+			State: 0,
+			Err: &Err{
+				Code: 7,
+				Msg:  "Verify code wrong",
+			},
+		}, nil
+
+	}
 	return &LoginResult{
-		Token: entry.Token,
+		State: in.GetState(),
+		Err: &Err{
+			Code: 8,
+			Msg:  "Login state wrong",
+		},
 	}, nil
 }
 
