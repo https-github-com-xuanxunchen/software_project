@@ -53,13 +53,13 @@ func (s *Service) Login(in *LoginArgs) (*LoginResult, error) {
 		} else { //以username为查找关键字，在表中查询不到记录，说明是新用户，注册
 			return &LoginResult{
 				State:      1,
-				VerifyCode: "verify code",
+				VerifyCode: "1234",
 			}, nil
 		}
 
 	}
 	if in.GetState() == 1 {
-		if in.GetVerifyCode() == "verify code" { //验证码正确
+		if len(in.GetVerifyCode()) == 4 { //验证码正确
 			id := randStringRunes(32) //id随机生成
 
 			entry := &Entry{

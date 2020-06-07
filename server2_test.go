@@ -35,7 +35,7 @@ func TestServer(t *testing.T) {
 		Username:   "username1",
 		Password:   "password1",
 		State:      1,
-		VerifyCode: "verify code",
+		VerifyCode: "4321",
 	}
 	loginResult, err = service.Login(&loginArgs)
 	if err != nil {
